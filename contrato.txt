@@ -1,0 +1,85 @@
+ID_CONTRATO = 0x33d21737A14DAC93734C8F9fF78dB8c4cF0Fe986
+
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract RegistroProdutos {
+    
+    // Estrutura de um produto
+    struct Produto {
+        uint256 id;
+        string nome;
+        string descricao;
+        string fabricante;
+        uint256 dataRegistro;
+        address registradoPor;
+        bool existe;
+    }
+    
+    // Dono do contrato
+    address public dono;
+    
+    // Contador de produtos
+    uint256 public totalProdutos;
+    
+    // Mapeamento: ID do produto → Produto
+    mapping(uint256 => Produto) public produtos;
+    
+    // Evento emitido quando um produto é registrado
+    event ProdutoRegistrado(
+        uint256 id,
+        string nome,
+        string fabricante,
+        address registradoPor
+    );
+    
+    // Construtor — executado uma vez ao fazer deploy
+    constructor() {
+        dono = msg.sender;
+        totalProdutos = 0;
+    }
+    
+    // Função para registrar um produto
+    function registrarProduto(
+        string memory _nome,
+        string memory _descricao,
+        string memory _fabricante
+    ) public returns (uint256) {
+        totalProdutos++;
+        
+        produtos[totalProdutos] = Produto({
+            id: totalProdutos,
+            nome: _nome,
+            descricao: _descricao,
+            fabricante: _fabricante,
+            dataRegistro: block.timestamp,
+            registradoPor: msg.sender,
+            existe: true
+        });
+        
+        emit ProdutoRegistrado(totalProdutos, _nome, _fabricante, msg.sender);
+        
+        return totalProdutos;
+    }
+    
+    // Função para buscar um produto pelo ID
+    function buscarProduto(uint256 _id) public view returns (
+        uint256 id,
+        string memory nome,
+        string memory descricao,
+        string memory fabricante,
+        uint256 dataRegistro,
+        address registradoPor
+    ) {
+        require(produtos[_id].existe, "Produto nao encontrado!");
+        
+        Produto memory p = produtos[_id];
+        return (p.id, p.nome, p.descricao, p.fabricante, p.dataRegistro, p.registradoPor);
+    }
+    
+    // Função para verificar se um produto existe
+    function produtoExiste(uint256 _id) public view returns (bool) {
+        return produtos[_id].existe;
+    }
+}

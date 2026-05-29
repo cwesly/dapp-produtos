@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Registro de Produtos - Blockchain</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      h1 {
+        text-align: center;
+        color: #60a5fa;
+        margin-bottom: 10px;
+        font-size: 2em;
+      }
+      .subtitle {
+        text-align: center;
+        color: #94a3b8;
+        margin-bottom: 30px;
+        font-size: 0.9em;
+      }
+      .card {
+        background: #1e293b;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        border: 1px solid #334155;
+      }
+      h2 {
+        color: #60a5fa;
+        margin-bottom: 15px;
+        font-size: 1.2em;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 10px 14px;
+        background: #0f172a;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        color: #e2e8f0;
+        margin-bottom: 12px;
+        font-size: 0.95em;
+      }
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #60a5fa;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        color: #94a3b8;
+        font-size: 0.85em;
+      }
+      button {
+        padding: 11px 20px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.95em;
+        width: 100%;
+        font-weight: bold;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background: #2563eb;
+      }
+      button:disabled {
+        background: #475569;
+        cursor: not-allowed;
+      }
+      #statusConexao {
+        text-align: center;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 0.9em;
+      }
+      .conectado {
+        background: #064e3b;
+        color: #34d399;
+        border: 1px solid #059669;
+      }
+      .desconectado {
+        background: #450a0a;
+        color: #f87171;
+        border: 1px solid #dc2626;
+      }
+      #resultado {
+        background: #0f172a;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+        font-size: 0.85em;
+        white-space: pre-wrap;
+        min-height: 50px;
+        color: #a3e635;
+      }
+      .produto-card {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+      }
+      .produto-card p {
+        margin-bottom: 6px;
+        font-size: 0.9em;
+      }
+      .produto-card strong {
+        color: #60a5fa;
+      }
+      #totalProdutos {
+        text-align: center;
+        font-size: 2em;
+        color: #34d399;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔗 Registro de Produtos</h1>
+      <p class="subtitle">
+        Sistema descentralizado na blockchain Ethereum (Sepolia Testnet)
+      </p>
+
+      <div id="statusConexao" class="desconectado">
+        ⚠️ Carteira não conectada
+      </div>
+
+      <button id="btnConectar" onclick="conectarCarteira()">
+        🦊 Conectar MetaMask
+      </button>
+
+      <br /><br />
+
+      <!-- Card: Registrar Produto -->
+      <div class="card">
+        <h2>📦 Registrar Novo Produto</h2>
+        <label>Nome do Produto</label>
+        <input
+          type="text"
+          id="nomeProduto"
+          placeholder="Ex: Notebook Dell XPS 15"
+        />
+        <label>Descrição</label>
+        <textarea
+          id="descricaoProduto"
+          rows="3"
+          placeholder="Ex: Notebook de alto desempenho com Intel Core i7..."
+        ></textarea>
+        <label>Fabricante</label>
+        <input
+          type="text"
+          id="fabricanteProduto"
+          placeholder="Ex: Dell Technologies"
+        />
+        <button onclick="registrarProduto()">✅ Registrar na Blockchain</button>
+        <div id="resultado">Aguardando ação...</div>
+      </div>
+
+      <!-- Card: Buscar Produto -->
+      <div class="card">
+        <h2>🔍 Buscar Produto por ID</h2>
+        <label>ID do Produto</label>
+        <input type="number" id="idBusca" placeholder="Ex: 1" min="1" />
+        <button onclick="buscarProduto()">🔎 Buscar</button>
+        <div id="resultadoBusca"></div>
+      </div>
+
+      <!-- Card: Total -->
+      <div class="card">
+        <h2>📊 Total de Produtos Registrados</h2>
+        <div id="totalProdutos">---</div>
+        <br />
+        <button onclick="carregarTotal()">🔄 Atualizar</button>
+      </div>
+    </div>
+
+    <!-- Ethers.js v5 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+    <script>
+      // ✅ Endereço do contrato deployado na Sepolia
+      const CONTRATO_ENDERECO = "0x33d21737A14DAC93734C8F9fF78dB8c4cF0Fe986";
+
+      const CONTRATO_ABI = [
+        {
+          inputs: [],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            { indexed: false, name: "id", type: "uint256" },
+            { indexed: false, name: "nome", type: "string" },
+            { indexed: false, name: "fabricante", type: "string" },
+            { indexed: false, name: "registradoPor", type: "address" },
+          ],
+          name: "ProdutoRegistrado",
+          type: "event",
+        },
+        {
+          inputs: [
+            { name: "_nome", type: "string" },
+            { name: "_descricao", type: "string" },
+            { name: "_fabricante", type: "string" },
+          ],
+          name: "registrarProduto",
+          outputs: [{ name: "", type: "uint256" }],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [{ name: "_id", type: "uint256" }],
+          name: "buscarProduto",
+          outputs: [
+            { name: "id", type: "uint256" },
+            { name: "nome", type: "string" },
+            { name: "descricao", type: "string" },
+            { name: "fabricante", type: "string" },
+            { name: "dataRegistro", type: "uint256" },
+            { name: "registradoPor", type: "address" },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [{ name: "_id", type: "uint256" }],
+          name: "produtoExiste",
+          outputs: [{ name: "", type: "bool" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalProdutos",
+          outputs: [{ name: "", type: "uint256" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "dono",
+          outputs: [{ name: "", type: "address" }],
+          stateMutability: "view",
+          type: "function",
+        },
+      ];
+
+      let provider, signer, contrato;
+
+      async function conectarCarteira() {
+        if (typeof window.ethereum === "undefined") {
+          alert("MetaMask não encontrada! Instale em https://metamask.io");
+          return;
+        }
+        try {
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+          signer = provider.getSigner();
+          contrato = new ethers.Contract(
+            CONTRATO_ENDERECO,
+            CONTRATO_ABI,
+            signer,
+          );
+
+          const endereco = await signer.getAddress();
+          const rede = await provider.getNetwork();
+
+          document.getElementById("statusConexao").className = "conectado";
+          document.getElementById("statusConexao").innerHTML =
+            `✅ Conectado: ${endereco.slice(0, 6)}...${endereco.slice(-4)} | Rede: ${rede.name}`;
+
+          document.getElementById("btnConectar").disabled = true;
+          document.getElementById("btnConectar").textContent =
+            "✅ MetaMask Conectada";
+
+          await carregarTotal();
+        } catch (err) {
+          alert("Erro ao conectar: " + err.message);
+        }
+      }
+
+      async function registrarProduto() {
+        if (!contrato) {
+          alert("Conecte a MetaMask primeiro!");
+          return;
+        }
+
+        const nome = document.getElementById("nomeProduto").value.trim();
+        const descricao = document
+          .getElementById("descricaoProduto")
+          .value.trim();
+        const fabricante = document
+          .getElementById("fabricanteProduto")
+          .value.trim();
+
+        if (!nome || !descricao || !fabricante) {
+          alert("Preencha todos os campos!");
+          return;
+        }
+
+        const resultado = document.getElementById("resultado");
+        resultado.textContent =
+          "⏳ Enviando transação... Confirme na MetaMask!";
+
+        try {
+          const tx = await contrato.registrarProduto(
+            nome,
+            descricao,
+            fabricante,
+          );
+          resultado.textContent = `⏳ Aguardando confirmação...\nHash: ${tx.hash}`;
+
+          const receipt = await tx.wait();
+          resultado.textContent = `✅ Produto registrado com sucesso!\n\nHash da transação: ${tx.hash}\nBloco: ${receipt.blockNumber}`;
+
+          document.getElementById("nomeProduto").value = "";
+          document.getElementById("descricaoProduto").value = "";
+          document.getElementById("fabricanteProduto").value = "";
+
+          await carregarTotal();
+        } catch (err) {
+          resultado.textContent = "❌ Erro: " + err.message;
+        }
+      }
+
+      async function buscarProduto() {
+        if (!contrato) {
+          alert("Conecte a MetaMask primeiro!");
+          return;
+        }
+
+        const id = document.getElementById("idBusca").value;
+        if (!id || id < 1) {
+          alert("Informe um ID válido!");
+          return;
+        }
+
+        const div = document.getElementById("resultadoBusca");
+        div.innerHTML = "<p>⏳ Buscando...</p>";
+
+        try {
+          const existe = await contrato.produtoExiste(id);
+          if (!existe) {
+            div.innerHTML =
+              "<p style='color:#f87171'>❌ Produto não encontrado!</p>";
+            return;
+          }
+
+          const p = await contrato.buscarProduto(id);
+          const data = new Date(
+            p.dataRegistro.toNumber() * 1000,
+          ).toLocaleString("pt-BR");
+
+          div.innerHTML = `
+                <div class="produto-card">
+                    <p><strong>ID:</strong> ${p.id.toString()}</p>
+                    <p><strong>Nome:</strong> ${p.nome}</p>
+                    <p><strong>Descrição:</strong> ${p.descricao}</p>
+                    <p><strong>Fabricante:</strong> ${p.fabricante}</p>
+                    <p><strong>Data de Registro:</strong> ${data}</p>
+                    <p><strong>Registrado por:</strong> ${p.registradoPor}</p>
+                </div>`;
+        } catch (err) {
+          div.innerHTML = `<p style='color:#f87171'>❌ Erro: ${err.message}</p>`;
+        }
+      }
+
+      async function carregarTotal() {
+        if (!contrato) return;
+        try {
+          const total = await contrato.totalProdutos();
+          document.getElementById("totalProdutos").textContent =
+            total.toString();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    </script>
+  </body>
+</html>
