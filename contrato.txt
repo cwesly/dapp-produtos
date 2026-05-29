@@ -1,7 +1,5 @@
-ID_CONTRATO = 0x33d21737A14DAC93734C8F9fF78dB8c4cF0Fe986
-
-
 // SPDX-License-Identifier: MIT
+// Contrato deployado na Sepolia: 0x33d21737A14DAC93734C8F9fF78dB8c4cF0Fe986
 pragma solidity ^0.8.0;
 
 contract RegistroProdutos {
